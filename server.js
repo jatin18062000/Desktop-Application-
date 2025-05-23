@@ -1,31 +1,39 @@
-const express = require('express');
-const dotenv = require('dotenv');
-const connectDB = require('./config/db');
-const authRoutes = require("./routes/auth.routes")
-const cookieParser = require("cookie-parser")
-const leavesRoutes = require("./routes/leave.routes")
-const userRoutes = require("./routes/user.routes")
-const path = require("path")
+// Make sure this is at the very top of your server.js file
+require("dotenv").config()
 
-dotenv.config();
-const app = express();
-app.use(express.json());
-app.use(cookieParser());
-app.use(express.urlencoded({ extended: true })); // For form-urlencoded requests
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+const express = require("express")
+const cors = require("cors")
+const connectDB = require("./config/db")
+const { seedAdmin } = require("./controllers/auth.controller")
 
+const app = express()
 
-app.use((req, res, next) => {
-  console.log(req.method, req.path);
-  next();
-});
+// Debug: Log environment variables (remove in production)
+console.log("🔍 Environment Variables Check:")
+console.log("EMAIL_USER:", process.env.EMAIL_USER ? "✅ Set" : "❌ Not set")
+console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "✅ Set" : "❌ Not set")
+console.log("MONGO_URI:", process.env.MONGO_URI ? "✅ Set" : "❌ Not set")
+console.log("JWT_SECRET:", process.env.JWT_SECRET ? "✅ Set" : "❌ Not set")
 
+// Middleware
+app.use(cors())
+app.use(express.json())
 
-connectDB();
-// Example route
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/leave', leavesRoutes);
-app.use('/api/v1/user', userRoutes);
+// Routes
+app.get("/", (req, res) => {
+  res.json({ message: "ZYNOTEX Employee Management API" })
+})
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.use("/api/v1/auth", require("./routes/auth.routes"))
+app.use("/api/v1/user", require("./routes/user.routes"))
+app.use("/api/v1/leave", require("./routes/leave.routes"))
+
+const PORT = process.env.PORT || 5000
+
+// Connect to database and start server
+connectDB().then(() => {
+  seedAdmin()
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`)
+  })
+})
