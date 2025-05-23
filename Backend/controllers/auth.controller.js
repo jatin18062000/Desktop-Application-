@@ -1,10 +1,11 @@
 const User = require("../models/user.model");
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs")
+const bcrypt = require("bcryptjs");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { ApiError } = require("../utils/ApiError");
 const { ApiResponse } = require("../utils/ApiResponse");
 const sendEmail = require("../utils/emailService");
+const crypto = require("crypto");
 
 const generateToken = (user) => {
   return jwt.sign(
@@ -31,7 +32,7 @@ const registerUserByAdmin = asyncHandler(async (req, res) => {
     email,
     password,
     dateOfBirth,
-    role = "user"
+    role = "user",
   } = req.body;
 
   const existingUser = await User.findOne({ email });
@@ -49,7 +50,7 @@ const registerUserByAdmin = asyncHandler(async (req, res) => {
     email,
     dateOfBirth,
     password: hashedPassword,
-    role
+    role,
   });
 
   // const token = generateToken(user);
@@ -70,9 +71,6 @@ const registerUserByAdmin = asyncHandler(async (req, res) => {
   );
 });
 
-
-
-
 // Login User
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
@@ -80,15 +78,13 @@ const loginUser = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email });
   if (!user) throw new ApiError(404, "User not found");
 
-  console.log("user",user);
-  
+  console.log("user", user);
 
   const isMatch = await bcrypt.compare(password, user.password);
 
-  
   if (!isMatch) throw new ApiError(401, "Invalid email or password");
 
-   if (user.role === "admin") {
+  if (user.role === "admin") {
     const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit
 
     user.adminLoginCode = code;
@@ -98,18 +94,24 @@ const loginUser = asyncHandler(async (req, res) => {
     await sendEmail(user.email, "Your Admin Login Code", `Code: ${code}`);
 
     return res.status(200).json(
-      new ApiResponse(200, { message: "Verification code sent to admin email" })
+      new ApiResponse(200, {
+        message: "Verification code sent to admin email",
+      })
     );
   }
 
   const token = generateToken(user);
 
-
   return res.status(200).json(
     new ApiResponse(
       200,
       {
-        user: { id: user._id, name: user.name, email: user.email, role: user.role },
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
         token,
       },
       "Login successful"
@@ -141,7 +143,12 @@ const verifyAdminLogin = asyncHandler(async (req, res) => {
     new ApiResponse(
       200,
       {
-        user: { id: user._id, name: user.name, email: user.email, role: user.role },
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
         token,
       },
       "Admin login verified successfully"
@@ -149,12 +156,54 @@ const verifyAdminLogin = asyncHandler(async (req, res) => {
   );
 });
 
+const sendOtp = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) throw new ApiError(404, "User not found");
 
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
 
+  user.resetOtp = hashedOtp;
+  user.resetOtpExpires = Date.now() + 10 * 60 * 1000;
+  await user.save({ validateBeforeSave: false });
+
+  // Send OTP via email/SMS
+  await sendEmail({
+    to: email,
+    subject: "Your OTP",
+    text: `Your OTP is ${otp}`,
+  });
+
+  res.status(200).json(new ApiResponse(200, null, "OTP sent to email"));
+});
+
+const verifyOtpAndResetPassword = asyncHandler(async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user || !user.resetOtp || !user.resetOtpExpires)
+    throw new ApiError(400, "Invalid request");
+
+  const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
+
+  if (user.resetOtp !== hashedOtp || user.resetOtpExpires < Date.now()) {
+    throw new ApiError(400, "OTP is invalid or expired");
+  }
+
+  user.password = await bcrypt.hash(newPassword, 10);
+  user.resetOtp = undefined;
+  user.resetOtpExpires = undefined;
+  await user.save();
+
+  res.status(200).json(new ApiResponse(200, null, "Password reset successful"));
+});
 
 const seedAdmin = async () => {
   try {
-    const existingAdmin = await User.findOne({ email: "jatinjaiswal47@gmail.com" });
+    const existingAdmin = await User.findOne({
+      email: "jatinjaiswal47@gmail.com",
+    });
     if (existingAdmin) {
       console.log("🔹 Admin already exists");
       return;
@@ -179,5 +228,7 @@ module.exports = {
   registerUserByAdmin,
   loginUser,
   seedAdmin,
-  verifyAdminLogin
+  verifyAdminLogin,
+  sendOtp,
+  verifyOtpAndResetPassword
 };

@@ -12,5 +12,9 @@
 
 // http://localhost:5000/api/v1/leave/update-leave/682db074ee3c3d2aba60169d   need status admin token
 
+// http://localhost:5000/api/v1/leave/leave-stats  need admin token
+
+// http://localhost:5000/api/v1/leave/user-leave-stats/682db074ee3c3d2aba60169d   need user id in params and admin token
+
 
 

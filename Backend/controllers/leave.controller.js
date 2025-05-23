@@ -2,6 +2,7 @@ const { ApiError } = require("../utils/ApiError");
 const { asyncHandler } = require("../utils/asyncHandler");
 const Leave = require("../models/leave.model");
 const { ApiResponse } = require("../utils/ApiResponse");
+const { default: mongoose } = require("mongoose");
 
 const createLeave = asyncHandler(async (req, res) => {
   const userId = req.user.id;
@@ -27,13 +28,26 @@ const createLeave = asyncHandler(async (req, res) => {
 });
 
 const getAllLeaves = asyncHandler(async (req, res) => {
-  const leaves = await Leave.find();
-  if (leaves.length === 0) {
+  const allLeavesRaw = await Leave.find().populate("user", "name email");
+
+  if (!allLeavesRaw.length) {
     throw new ApiError(404, "No leaves found");
   }
+
+  const allLeaves = allLeavesRaw.filter((leave) => leave.status !== "pending");
+  const pendingLeaves = allLeavesRaw.filter(
+    (leave) => leave.status === "pending"
+  );
+
   return res
     .status(200)
-    .json(new ApiResponse(200, leaves, "leaves got successfylly"));
+    .json(
+      new ApiResponse(
+        200,
+        { allLeaves, pendingLeaves },
+        "All and pending leaves fetched"
+      )
+    );
 });
 
 const UpdateLeave = asyncHandler(async (req, res) => {
@@ -52,8 +66,62 @@ const UpdateLeave = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, leave, "leave updated successfully"));
 });
 
+const getAllLeaveStats = asyncHandler(async (req, res) => {
+  const stats = await Leave.aggregate([
+    {
+      $group: {
+        _id: "$reason",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+  return res
+    .status(200)
+    .json(new ApiResponse(200, stats, "Leave stats of all employees"));
+});
+
+const getUserLeaveStats = asyncHandler(async (req, res) => {
+  const userId = req.params.userId;
+  const userLeaves = await Leave.aggregate([
+    { $match: { user: new mongoose.Types.ObjectId(String(userId)) } },
+    {
+      $group: {
+        _id: "$reason",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, userLeaves, "leaves by user"));
+});
+
+const getSingleLeave = asyncHandler(async (req, res) => {
+  const leaveId = req.params.leaveId;
+
+  const leave = await Leave.findById(leaveId)
+
+  if (!leave.length) {
+    throw new ApiError(404, "No leave record found for this user");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        leave,
+        "Leave details for the user fetched successfully"
+      )
+    );
+});
+
 module.exports = {
   createLeave,
   getAllLeaves,
   UpdateLeave,
+  getAllLeaveStats,
+  getUserLeaveStats,
+  getSingleLeave,
 };

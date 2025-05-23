@@ -5,6 +5,8 @@ const {
   createLeave,
   getAllLeaves,
   UpdateLeave,
+  getAllLeaveStats,
+  getUserLeaveStats,
 } = require("../controllers/leave.controller");
 const { body, validationResult } = require("express-validator");
 
@@ -28,5 +30,10 @@ router.post(
 router.get("/getAllLeaves", getAllLeaves);
 
 router.put("/update-leave/:userId", protect, isAdmin, UpdateLeave);
+
+router.get("/leave-stats",protect, isAdmin, getAllLeaveStats)
+
+router.get("/user-leave-stats/:userId",protect, isAdmin, getUserLeaveStats)
+
 
 module.exports = router;
