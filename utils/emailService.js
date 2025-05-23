@@ -1,27 +1,45 @@
-const nodemailer = require("nodemailer");
+const nodemailer = require("nodemailer")
 
 const sendEmail = async (to, subject, text) => {
   try {
-    // Create transporter for Gmail SMTP
+    // Check if credentials exist
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.error("❌ Missing email credentials: Please set EMAIL_USER and EMAIL_PASS environment variables")
+
+      // Development fallback
+      if (process.env.NODE_ENV === "development") {
+        const code = text.match(/\d{6}/)?.[0] || text.match(/Code:\s*(\d+)/)?.[1] || null
+        console.log("\n🔹 Development Mode - Email would have been sent:")
+        console.log("🔹 To:", to)
+        console.log("🔹 Subject:", subject)
+        if (code) console.log("🔹 Verification Code:", code)
+        console.log("🔹 Continuing without sending email...\n")
+        return true
+      }
+
+      return false
+    }
+
+    // Create transporter for Gmail SMTP with OAuth2
+    // This is more secure and reliable than password auth
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true, // use SSL
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
-      secure: true, // TLS
-      port: 465,
-    });
+      debug: true, // Show debug output
+      logger: true, // Log information into the console
+    })
 
     // Verify transporter config (optional but useful in dev)
-    await transporter.verify();
-    console.log("📧 Email transporter is ready");
+    await transporter.verify()
+    console.log("📧 Email transporter is ready")
 
     // Construct HTML content
-    const code =
-      text.match(/\d{6}/)?.[0] ||
-      text.match(/Code:\s*(\d+)/)?.[1] ||
-      null;
+    const code = text.match(/\d{6}/)?.[0] || text.match(/Code:\s*(\d+)/)?.[1] || null
 
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
@@ -55,7 +73,7 @@ const sendEmail = async (to, subject, text) => {
           </p>
         </div>
       </div>
-    `;
+    `
 
     // Email options
     const mailOptions = {
@@ -64,30 +82,34 @@ const sendEmail = async (to, subject, text) => {
       subject,
       text,
       html: htmlContent,
-    };
+    }
 
     // Send email
-    const info = await transporter.sendMail(mailOptions);
-    console.log("✅ Email sent successfully:", info.messageId);
-    console.log("📧 Email sent to:", to);
-    return true;
-
+    const info = await transporter.sendMail(mailOptions)
+    console.log("✅ Email sent successfully:", info.messageId)
+    console.log("📧 Email sent to:", to)
+    return true
   } catch (error) {
-    console.error("❌ Email sending failed:", error.message);
+    console.error("❌ Email sending failed:", error.message)
+
+    // Log more detailed error information
+    if (error.code) console.error("Error code:", error.code)
+    if (error.command) console.error("Failed command:", error.command)
+    if (error.response) console.error("Server response:", error.response)
 
     // Fallback logging in development
     if (process.env.NODE_ENV === "development") {
-      const code = text.match(/\d{6}/)?.[0] || text.match(/Code:\s*(\d+)/)?.[1];
+      const code = text.match(/\d{6}/)?.[0] || text.match(/Code:\s*(\d+)/)?.[1]
       if (code) {
-        console.log("🔹 Development Mode - OTP/Code for testing:", code);
-        console.log("🔹 Intended recipient:", to);
+        console.log("🔹 Development Mode - OTP/Code for testing:", code)
+        console.log("🔹 Intended recipient:", to)
       }
-      console.log("🔹 Continuing in development mode without email...");
-      return true;
+      console.log("🔹 Continuing in development mode without email...")
+      return true
     }
 
-    return false;
+    return false
   }
-};
+}
 
-module.exports = sendEmail;
+module.exports = sendEmail
