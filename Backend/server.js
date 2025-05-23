@@ -4,6 +4,7 @@ const connectDB = require('./config/db');
 const authRoutes = require("./routes/auth.routes")
 const cookieParser = require("cookie-parser")
 const leavesRoutes = require("./routes/leave.routes")
+const userRoutes = require("./routes/user.routes")
 const path = require("path")
 
 dotenv.config();
@@ -24,6 +25,7 @@ connectDB();
 // Example route
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/leave', leavesRoutes);
+app.use('/api/v1/user', userRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

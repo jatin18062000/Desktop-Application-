@@ -8,31 +8,31 @@ const userSchema = new mongoose.Schema(
     },
     designation: {
       type: String,
-      required: true
+      required: false
     },
     dateOfBirth: {
       type: Date,
-      required: true
+      required: false
     },
     department: {
       type: String,
       enum: ["Engineering","Design","Management","Human Resources","Finance","Marketing",
         "Sales"
       ],
-      required: true
+      required: false
     },
     bloodGroup: {
       type: String,
       enum: ["A+","A-","B+","B-","O+","O-","AB+","AB-"],
-      required: true
+      required: false
     },
     phoneNo: {
       type: String,
-      required: true
+      required: false
     },
     address: {
       type: String,
-      required: true
+      required: false
     },
     email: {
       type: String,
