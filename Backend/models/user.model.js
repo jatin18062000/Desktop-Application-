@@ -10,6 +10,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    dateOfBirth: {
+      type: Date,
+      required: true
+    },
     department: {
       type: String,
       enum: ["Engineering","Design","Management","Human Resources","Finance","Marketing",

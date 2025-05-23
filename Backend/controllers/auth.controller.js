@@ -30,6 +30,7 @@ const registerUserByAdmin = asyncHandler(async (req, res) => {
     address,
     email,
     password,
+    dateOfBirth,
     role = "user"
   } = req.body;
 
@@ -46,6 +47,7 @@ const registerUserByAdmin = asyncHandler(async (req, res) => {
     phoneNo,
     address,
     email,
+    dateOfBirth,
     password: hashedPassword,
     role
   });
