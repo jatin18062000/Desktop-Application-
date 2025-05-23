@@ -21,27 +21,53 @@ const generateToken = (user) => {
 
 // Register User
 const registerUserByAdmin = asyncHandler(async (req, res) => {
-  const { name, email, password, role = "user" } = req.body;
+  const {
+    name,
+    designation,
+    department,
+    bloodGroup,
+    phoneNo,
+    address,
+    email,
+    password,
+    role = "user"
+  } = req.body;
 
   const existingUser = await User.findOne({ email });
   if (existingUser) throw new ApiError(409, "User already exists");
 
   const hashedPassword = await bcrypt.hash(password, 10);
-  const user = await User.create({ name, email, password: hashedPassword, role });
 
-  const token = generateToken(user);
+  const user = await User.create({
+    name,
+    designation,
+    department,
+    bloodGroup,
+    phoneNo,
+    address,
+    email,
+    password: hashedPassword,
+    role
+  });
+
+  // const token = generateToken(user);
 
   return res.status(201).json(
     new ApiResponse(
       201,
       {
-        user: { id: user._id, name: user.name, email: user.email },
-        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
       },
       "User created by admin"
     )
   );
 });
+
 
 
 
